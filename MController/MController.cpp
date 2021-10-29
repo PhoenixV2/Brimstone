@@ -146,6 +146,10 @@ void MController::set_on_pulse(int microseconds){
 }
 
 void MController::step(){
+	// TODO: Change to set pins HIGH with
+	// eg. PORTB |= _BV(PB3);
+	// and set them Low with eg PORTB &= ~_BV(PB3);
+	// need to configure the specific pins somewhere
 	digitalWrite(_dir_pin, _direction);
 	digitalWrite(_step_pin, HIGH);
 	// Wait minimum pulse width <- This is blocking
