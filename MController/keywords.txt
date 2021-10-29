@@ -1,0 +1,33 @@
+#######################################
+# Syntax Coloring Map For MController
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+MController	KEYWORD1
+MController.h   KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+run	KEYWORD2
+run_velocity	KEYWORD2
+set_max_velocity	KEYWORD2   
+set_acceleration	KEYWORD2   
+set_on_pulse	KEYWORD2   
+set_motor_zero	KEYWORD2 
+set_eStop	KEYWORD2  
+reset_eStop	KEYWORD2
+set_speed	KEYWORD2
+print_speed	KEYWORD2
+print_headers	KEYWORD2
+get_velocity	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+ARDUINO_MAX_V	LITERAL1
