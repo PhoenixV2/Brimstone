@@ -13,6 +13,7 @@ MController::MController(int dirPin, int stepPin){
 	_v_time = 0;
 	_step_count = 0;
 	_eStop = false;
+	_stepping = false;
 
 	// Default Values
 	_max_velocity = ARDUINO_MAX_V;
@@ -49,7 +50,11 @@ bool MController::run_velocity(){
 			}
 			_prev_step_time = _curr_time;
 			step();
+			// step_nonblocking();
 		}
+		// if(_stepping){
+		// 	step_nonblocking();
+		// }
 		return true;
 	}
 	return false;
@@ -158,6 +163,21 @@ void MController::step(){
 	digitalWrite(_step_pin, LOW);
 }
 
+void MController::step_nonblocking(){
+	if(!_stepping){
+		_stepping = true;
+		// Set direction
+		digitalWrite(_dir_pin, _direction);
+		digitalWrite(_step_pin, HIGH);
+		// Get time stamp of pin going high
+		_step_high_time = micros();
+	}else{
+		if(micros() - _step_high_time >= _min_pulse_width){
+			digitalWrite(_step_pin, LOW);
+			_stepping = false;
+		}
+	}
+}
 
 /**
  * USER UTILITY FUNCTIONS 

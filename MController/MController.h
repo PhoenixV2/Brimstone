@@ -50,6 +50,7 @@ class MController{
 	private:
 		// Triggers a step pulse to the motor controller
 		void step();
+		void step_nonblocking();
 		// Calculates the new velocity for the next step to reach the target velocity
 		// incorporating jerk
 		// float calc_new_velocity(float V);
@@ -63,6 +64,8 @@ class MController{
 		int _step_pin;
 		// Sets the direction of the motors operation: HIGH or LOW
 		bool _direction;
+		// Flag for step pulse width timing
+		bool _stepping;
 
 		// Current speed of the motor
 		float _velocity;
@@ -85,6 +88,8 @@ class MController{
 		float _step_interval;
 		// Time in µs that the previous step was taken
 		unsigned long _prev_step_time;
+		// Time in µs that the step pin went high
+		unsigned long _step_high_time;
 		// Current time - assigning here to save memory
 		unsigned long _curr_time;
 
