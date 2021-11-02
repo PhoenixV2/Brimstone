@@ -7,7 +7,7 @@ MController::MController(int dirPin, int stepPin){
 	pinMode(_step_pin, OUTPUT);
 	pinMode(_dir_pin, OUTPUT);
 
-	_min_pulse_width = 10; // (6 for A4988) Microseconds
+	_min_pulse_width = 6; // (6 for A4988) Microseconds
 	_step_interval = 0;
 	_prev_step_time = 0;
 	_v_time = 0;
@@ -18,9 +18,9 @@ MController::MController(int dirPin, int stepPin){
 	// Default Values
 	_max_velocity = ARDUINO_MAX_V;
 	_velocity = 0;
-	_acceleration = 100; //20
-	_a = 0;
-	_jerk = 25; //2
+	_max_acceleration = 400; //20
+	_acceleration = 0;
+	_jerk = 100; //2
 
 	set_motor_zero();
 }
@@ -36,12 +36,20 @@ void MController::run(){
 	}
 }
 
+bool MController::run_speed(float v){
+	if(!_eStop){
+		calc_new_velocity(v);
+		calc_interval();
+		run_velocity();
+	}
+	return (_velocity == v)?true:false;
+}
+
 bool MController::run_velocity(){
 	// if "_step_interval == 0" then no motion should occur
 	if(_step_interval){
 		_curr_time = micros();
 		// Check if the _step_interval has elapsed since the previous
-		// step
 		if(_curr_time - _prev_step_time >= _step_interval){
 			if(_direction){
 				_step_count++;
@@ -49,12 +57,12 @@ bool MController::run_velocity(){
 				_step_count--;
 			}
 			_prev_step_time = _curr_time;
-			step();
-			// step_nonblocking();
+			// step();
+			step_nonblocking();
 		}
-		// if(_stepping){
-		// 	step_nonblocking();
-		// }
+		if(_stepping){
+			step_nonblocking();
+		}
 		return true;
 	}
 	return false;
@@ -66,53 +74,46 @@ long MController::steps_remaining(){
 
 float MController::calc_new_velocity(float V){
 
+	V = min(V, _max_velocity);
 	// Get time step
 	_T_TEMP = micros();
 	float dt = (_T_TEMP - _v_time)/1000000.0; // Scale it back to seconds
 	_v_time = _T_TEMP;
-	// Serial.println(dt);
-	if(V > _max_velocity){
-		V = _max_velocity;
-	}
-	if(abs(V - _velocity) > _v_error){
-		float nV = 0.5*_a*_a/_jerk;
+	
+	float dV = V - _velocity;
+	if(abs(dV) > _v_error){
+		
+		// nV is the maximum velocity generated from the current acceleration
+		// to a point where acceleration is 0
+		// Calulated from V = a*t + 1/2*J*t^2 where t = a/J 
+		// and we assume no initial conditions so a*t = 0
+		float nV = 0.5*_acceleration*_acceleration/_jerk;
 		
 		// Get the sign of the difference between current and target V
-		int c = ((V - _velocity) > 0) - ((V - _velocity) < 0);
+		int c = ((dV) > 0) - ((dV) < 0);
 
-		if(abs(V - _velocity) <= nV){
-			if(abs(_a) > 0){
-				_a += -c*_jerk*dt; 
-			}
-		}else if(abs(_a) < _acceleration){
-			_a += c*_jerk*dt;
+		// Need to start slowing down to reach target velocity with 0 acceleration
+		if(abs(dV) <= nV && abs(_acceleration) > 0){
+			_acceleration += -c*_jerk*dt;
+		}else if(abs(_acceleration) < _max_acceleration){
+		// FULL STEAM AHEAD BOIS!
+			_acceleration += c*_jerk*dt;
 		}
 	}else{
 		// We have reached the target velocity
-		_a = 0;
+		_acceleration = 0;
 		_velocity = V;
 	}
-	_velocity += _a*dt; 
+	_velocity += _acceleration*dt; 
 	// Set direction, if V is positive -> clockwise
 	// if V is negative -> anticlockwise
 	_direction = (_velocity >= 0)?HIGH:LOW; 
 	return _velocity;
 }
 
-void MController::set_speed(float targetV){
-	// Calculate the pulse width for the specified steps/s
-	if(targetV <= ARDUINO_MAX_V){
-		_velocity = targetV;
-	}else{
-		_velocity = ARDUINO_MAX_V;
-	}
-	_step_interval = 1000000.0/abs(_velocity); // µs per step
-}
-
 void MController::calc_interval(){
-	if(_velocity >= _max_velocity){
-		_velocity = _max_velocity;
-	}
+	_velocity = min(_velocity, _max_velocity);
+
 	if(abs(_velocity) > 0){
 		_step_interval = 1000000.0/abs(_velocity); // µs per step
 	}else{
@@ -143,7 +144,7 @@ void MController::set_max_velocity(float maxV){
 }
 
 void MController::set_acceleration(float maxA){
-	_acceleration = abs(maxA);
+	_max_acceleration = abs(maxA);
 }
 
 void MController::set_on_pulse(int microseconds){
@@ -187,9 +188,11 @@ void MController::step_nonblocking(){
 
 void MController::print_speed(float targetV){
 	
+	Serial.print(_step_interval);
+	Serial.print("\t");
 	Serial.print(_velocity);
 	Serial.print("\t");
-	Serial.print(_a);
+	Serial.print(_acceleration);
 	Serial.print("\t");
 	Serial.print(_step_count);
 	Serial.print("\t");
@@ -197,7 +200,8 @@ void MController::print_speed(float targetV){
 }
 
 void MController::print_headers(){
-	Serial.print("Velocity");
+	Serial.print("Interval");
+	Serial.print("\tVelocity");
 	Serial.print("\tAcceleration");
 	Serial.print("\tPosition");
 	Serial.println("\tTarget velocity");
