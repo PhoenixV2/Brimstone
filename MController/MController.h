@@ -9,7 +9,7 @@
 #include <wiring.h>
 #endif
 
-#define ARDUINO_MAX_V 3000 // Steps per second
+#define ARDUINO_MAX_V 6000 // Steps per second
 
 class MController{
 	public:
@@ -19,11 +19,8 @@ class MController{
 		// Runs the motor linearly from the current position to the new position at max velocity
 		// Stops at new position with V = 0
 		void run();
-		// Triggers a step with velocity spacing set by "_step_interval"
-		bool run_velocity();
-		// Sets the motor "_velocity" and "_step_interval" so that the motor can run
-		// at a velocity indefinitely by calling run_v()
-		void set_speed(float targetV);
+		// runs the motor to a targeted velocity
+		bool run_speed(float v);
 		// Sets the maximum velocity in steps per second
 		void set_max_velocity(float maxV);
 		// Sets the maximum acceleration in steps per second^2
@@ -39,21 +36,28 @@ class MController{
 		void set_eStop(int eStopPin);
 		void reset_eStop();
 
+		/** USER UTILITY FUNCITONS
+		*/
 		// Prints the current speed of the motor and the last time it stepped
 		void print_speed(float targetV);
 		void print_headers();
-
-		void calc_interval();
-		float calc_new_velocity(float V);
+		// Returns the current velocty
+		// TODO: Add method for getting velocity from latest pulse timings
 		float get_velocity();
+
 
 	private:
 		// Triggers a step pulse to the motor controller
 		void step();
 		void step_nonblocking();
-		// Calculates the new velocity for the next step to reach the target velocity
-		// incorporating jerk
-		// float calc_new_velocity(float V);
+		// Calculates the interval between step pulses required for "_velocity"
+		void calc_interval();
+		// Triggers a step with velocity spacing set by "_step_interval"
+		bool run_velocity();
+		// Calculates the velocity for the next time step based on the target, 
+		// current velocity and acceleration. Generates a quadratic velocity profile
+		// and a trapezoid acceleration profile
+		float calc_new_velocity(float V);
 		// Returns the number of steps from the current position to the _new_position
 		long steps_remaining();
 
@@ -72,9 +76,9 @@ class MController{
 		// Maximum velocity
 		float _max_velocity;
 		// Current acceleration
-		float _a;
-		// Maximum acceleration
 		float _acceleration;
+		// Maximum acceleration
+		float _max_acceleration;
 		// Max Jerk
 		int _jerk;
 		// v calc time
